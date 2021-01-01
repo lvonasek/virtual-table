@@ -261,6 +261,7 @@ public class GUI extends JComponent implements KeyListener, MouseListener, Mouse
           {
             c.viewX = patch.viewX;
             c.viewY = patch.viewY;
+            c.timestamp = patch.timestamp;
           }
         }
       }

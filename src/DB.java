@@ -12,6 +12,7 @@ public class DB
   private static final String USENAME = "";
   private static final String PASSWORD = "";
   public static final String GAME_ADMIN_PASSWORD = "admin";
+  public static final String GAME_ROOM_NAME = "";
 
   public class Card
   {
@@ -62,6 +63,30 @@ public class DB
       e.printStackTrace();
     }
   }
+  
+  public String getCardsTableName()
+  {
+    if (GAME_ROOM_NAME.length() == 0)
+    {
+      return "`cards`";
+    }
+    else
+    {
+      return "`room_" + GAME_ROOM_NAME + "_cards`"; 
+    }
+  }
+  
+  public String getPlayersTableName()
+  {
+    if (GAME_ROOM_NAME.length() == 0)
+    {
+      return "`players`";
+    }
+    else
+    {
+      return "`room_" + GAME_ROOM_NAME + "_players`"; 
+    }
+  }
 
   public ArrayList<Card> readCards()
   {
@@ -70,7 +95,7 @@ public class DB
     {
       Connection conn = dataSource.getConnection();
       Statement stmt = conn.createStatement();
-      ResultSet rs = stmt.executeQuery("SELECT * FROM `cards` ORDER BY `timestamp` ASC");
+      ResultSet rs = stmt.executeQuery("SELECT * FROM " + getCardsTableName() + " ORDER BY `timestamp` ASC");
       while (rs.next()){
         Card c = new Card();
         c.front = rs.getString("front");
@@ -101,7 +126,7 @@ public class DB
     {
       Connection conn = dataSource.getConnection();
       Statement stmt = conn.createStatement();
-      ResultSet rs = stmt.executeQuery("SELECT * FROM `players`");
+      ResultSet rs = stmt.executeQuery("SELECT * FROM " + getPlayersTableName());
       while (rs.next()){
         Player p = new Player();
         p.name = rs.getString("name");
@@ -123,10 +148,5 @@ public class DB
       players = null;
     }
     return players;
-  }
-  
-  public String format(float value)
-  {
-    return (value + "").replace(',', '.');
   }
 }

@@ -218,6 +218,8 @@ public class Main
                                 int value = rnd.nextInt(10000);
                                 line = line.replaceFirst("%RND%", "" + value);
                               }
+                              line = line.replaceAll("%CARDS%", db.getCardsTableName());
+                              line = line.replaceAll("%PLAYERS%", db.getPlayersTableName());
                               db.execute(line);
                             }
                             sc.close();
