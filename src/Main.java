@@ -7,10 +7,14 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Random;
 import java.util.Scanner;
 
+import javax.imageio.ImageIO;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JDialog;
@@ -30,12 +34,60 @@ public class Main
   private static JFrame window;
   private static int scale;
   
-  public static void main(String[] args) throws Exception
-  {
+  public static void main(String[] args) throws Exception {
+    //createGame();
     db = new DB();
     scale = getScale(args);
     window = new JFrame();
     new LoginDialog(window).setVisible(true);
+  }
+  
+  private static void createGame() throws Exception {
+    Scanner sc = new Scanner(System.in);
+    System.out.print("Enter game name: ");
+    String game = sc.nextLine();
+    System.out.print("Use dice (y/n): ");
+    String dice = sc.nextLine();
+    System.out.print("Enter amount of cards: ");
+    int cards = sc.nextInt();
+    System.out.print("Enter amount of instances: ");
+    int duplicates = sc.nextInt();
+    sc.close();
+    
+    boolean first = true;
+    String data = "DELETE FROM %CARDS% WHERE 1\n";
+    data += "INSERT INTO %CARDS% (`front`, `back`, `x`, `y`, `timestamp`, `w`, `h`) VALUES ";
+    for (int j = 0; j < duplicates; j++) {
+      for (int i = 1; i <= cards; i++) {
+        if (!first) {
+          data += ",";
+        } else {
+          first = false;
+        }
+        String file = i + "";
+        while (file.length() < 5) {
+          file = "0" + file;
+        }
+        String c = "/1.jpg";
+        float y = 0.85f;
+        if (cards > 205) {
+          boolean bonus = i <= 205;
+          c = bonus ? "/1.jpg" : "/2.jpg";
+          y = bonus ? 0.87f : 0.82f;
+        }
+        String e = "";
+        for (int k = 0; k < j; k++) {
+          e += "#";
+        }
+        data += "('data/" + game + "/Image_" + file + ".jpg" + e + "', 'data/" + game + c + "', '" + y + "', '0.5', '%RND%', '3', '5')";
+      } 
+    }
+    if (dice.compareTo("y") == 0 ) {
+      data += ",('data/common/1.png', 'data/common/1.png', '0.865', '0.85', '0', '5', '5')";
+    }
+    FileOutputStream fos = new FileOutputStream("sql/reset_game_" + game + ".sql");
+    fos.write(data.getBytes());
+    fos.close();
   }
   
   private static void createMenuBar() {
@@ -104,6 +156,11 @@ public class Main
 
     window.setJMenuBar(menuBar);
     window.setTitle("Virtual Table");
+    try {
+      window.setIconImage(ImageIO.read(new File("data/icon.png"))); 
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
 }
   
   private static int getScale(String[] args)
@@ -197,7 +254,14 @@ public class Main
                   int index = 1;
                   
                   File dir = new File("./sql");
-                  for (final File file : dir.listFiles())
+                  File[] files = dir.listFiles();
+                  Arrays.sort(files, new Comparator<File>() {
+                    @Override
+                    public int compare(File o1, File o2) {
+                        return o1.compareTo(o2);
+                    }
+                  });
+                  for (final File file : files)
                   {
                     if (!file.isDirectory())
                     {
@@ -215,7 +279,7 @@ public class Main
                               String line = sc.nextLine();
                               while (line.contains("%RND%"))
                               {
-                                int value = rnd.nextInt(10000);
+                                int value = rnd.nextInt(10000) + 1;
                                 line = line.replaceFirst("%RND%", "" + value);
                               }
                               line = line.replaceAll("%CARDS%", db.getCardsTableName());

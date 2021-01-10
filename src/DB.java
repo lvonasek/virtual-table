@@ -20,9 +20,15 @@ public class DB
     public String back;
     public float x;
     public float y;
+    public float w;
+    public float h;
     public float viewX;
     public float viewY;
     public long timestamp;
+    
+    public boolean isDice() {
+      return front.endsWith(".png") && front.contains("common/");
+    }
   }
   
   public class Player
@@ -102,9 +108,17 @@ public class DB
         c.back = rs.getString("back");
         c.x = rs.getFloat("x");
         c.y = rs.getFloat("y");
+        try {
+          c.w = rs.getFloat("w");
+          c.h = rs.getFloat("h"); 
+        } catch (Exception e) {
+          
+        }
         c.viewX = c.x;
         c.viewY = c.y;
         c.timestamp = rs.getLong("timestamp");
+        if (c.w < 0.001) c.w = c.front.endsWith(".png") ? 5 : 3;
+        if (c.h < 0.001) c.h = 5;
         cards.add(c);
       }
       rs.close();

@@ -4,6 +4,9 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
@@ -48,9 +51,47 @@ public class GUI extends JComponent implements KeyListener, MouseListener, Mouse
     swapped = false;
     align = 0;
     zoom = 1;
+    
+    addComponentListener(new ComponentListener() {
+
+      @Override
+      public void componentHidden(ComponentEvent arg0)
+      {
+      }
+
+      @Override
+      public void componentMoved(ComponentEvent arg0)
+      {
+      }
+
+      @Override
+      public void componentResized(ComponentEvent arg0)
+      {
+        float aspect = 1366.0f / 768.0f;  
+        Rectangle b = arg0.getComponent().getBounds();
+        int w = b.width;
+        int h = (int)(b.width / aspect);
+        if (h > b.height)
+        {
+          w = (int)(b.height * aspect);
+          h = b.height;
+        }
+        int x = Math.abs(b.width - w) / 2;
+        int y = Math.abs(b.height - h) / 2;
+        if ((x != 0) || (y != 0))
+        {
+          arg0.getComponent().setBounds(x, y, w, h); 
+        }
+      }
+
+      @Override
+      public void componentShown(ComponentEvent arg0)
+      { 
+      }
+    });
   }
   
-  public void draw(Graphics g, String path, float x, float y, float w, float h)
+  public void draw(Graphics g, String path, float x, float y, float w, float h, boolean drawRect)
   {
     try 
     {
@@ -76,7 +117,7 @@ public class GUI extends JComponent implements KeyListener, MouseListener, Mouse
       }
       g.setColor(Color.BLACK);
       g.drawImage(images.get(path), (int)x, (int)y, (int)w, (int)h, null);
-      if (!path.endsWith(".png"))
+      if (drawRect)
       {
         g.drawRect((int)x, (int)y, (int)w, (int)h); 
       }
@@ -91,7 +132,7 @@ public class GUI extends JComponent implements KeyListener, MouseListener, Mouse
     loaded = 0;
     float w = getWidth();
     float h = getHeight();
-    draw(g, "data/table.jpg", 0, 0, w, h);
+    draw(g, "data/table.jpg", 0, 0, w, h, false);
 
     if (players != null)
     {
@@ -112,18 +153,25 @@ public class GUI extends JComponent implements KeyListener, MouseListener, Mouse
           g.drawRect(x1, y1, x2 - x1, y2 - y1); 
         }
         
+        boolean top = (player.y1 + player.y2) * 0.5f < 0.5f; 
         String text = player.note;
         int tw = metrics.stringWidth(text);
         int th = metrics.getHeight() / 2;
         if (swapped)
         {
-          g.drawString(text, (x1 + x2) / 2 - tw / 2, (int)h - y2 - th / 2);
-          g.drawString(text, (x1 + x2) / 2 - tw / 2, (int)h - y1 + 3 * th / 2);
+          if (top) {
+            g.drawString(text, (x1 + x2) / 2 - tw / 2, (int)h - y2 - th / 2); 
+          } else {
+            g.drawString(text, (x1 + x2) / 2 - tw / 2, (int)h - y1 + 3 * th / 2); 
+          }
         }
         else
         {
-          g.drawString(text, (x1 + x2) / 2 - tw / 2, y1 - th / 2);
-          g.drawString(text, (x1 + x2) / 2 - tw / 2, y2 + 3 * th / 2); 
+          if (top) {
+            g.drawString(text, (x1 + x2) / 2 - tw / 2, y2 + 3 * th / 2);
+          } else {
+            g.drawString(text, (x1 + x2) / 2 - tw / 2, y1 - th / 2);
+          } 
         }
       }
     }
@@ -151,9 +199,10 @@ public class GUI extends JComponent implements KeyListener, MouseListener, Mouse
           }
         }
         
+        float z = card.back.contains("/0.") ? 1 : zoom;
         float c = Math.min(w, h) / 100;
-        float cw = c * (card.front.endsWith(".png") ? 5.0f : 3.0f) * zoom;
-        float ch = c * 5.0f * zoom;
+        float cw = c * card.w * z;
+        float ch = c * card.h * z;
         float x = card.x * w;
         float y = card.y * h;
         String owner = null;
@@ -169,13 +218,13 @@ public class GUI extends JComponent implements KeyListener, MouseListener, Mouse
           }
         }
         String image = owner == null || owner.compareToIgnoreCase(id) == 0 ? card.front : card.back;
-        if (image.endsWith(".png"))
+        if (card.isDice())
         {
           image = card.back;
         }
         x = card.viewX * w;
         y = card.viewY * h;
-        if ((align > 0) && (!card.front.endsWith(".png")) && !moving)
+        if ((align > 0) && (!card.isDice()) && !moving)
         {
           x = (int)(x * align / w) / (align / w);
           y = (int)(y * align / h) / (align / h); 
@@ -184,9 +233,10 @@ public class GUI extends JComponent implements KeyListener, MouseListener, Mouse
         float y1 = y - ch;
         float x2 = x + cw;
         float y2 = y + ch;
-        draw(g, image, x1, y1, x2 - x1, y2 - y1);
+        String file = card.back.replaceAll("#", "");
+        draw(g, image, x1, y1, x2 - x1, y2 - y1, !file.endsWith(".png"));
         
-        if (!drag)
+        if (!drag && !card.front.contains("/0."))
         {
           if ((x1 < mx) && (y1 < my) && (x2 > mx) && (y2 > my))
           {
@@ -205,7 +255,7 @@ public class GUI extends JComponent implements KeyListener, MouseListener, Mouse
         {
           h *= 0.75f;
           w = 3.0f * h / 5.0f;
-          draw(g, selectedImage, getWidth() - w + 1, 0, w, h); 
+          draw(g, selectedImage, getWidth() - w + 1, 0, w, h, false); 
         }
       }      
     }
@@ -340,7 +390,7 @@ public class GUI extends JComponent implements KeyListener, MouseListener, Mouse
   {
     if (drag && selected != null)
     {
-      if (selected.front.endsWith(".png"))
+      if (selected.isDice())
       {
         boolean inverted = selected.back.contains("inverted"); 
         int number = new Random(System.currentTimeMillis()).nextInt(6) + 1;
@@ -357,7 +407,7 @@ public class GUI extends JComponent implements KeyListener, MouseListener, Mouse
       selected.y = selected.viewY;
       String x = (selected.x + "").replace(',', '.');
       String y = (selected.y + "").replace(',', '.');
-      String command = "UPDATE `cards` SET `x`=" + x + ",`y`=" + y + ",`timestamp`=" + selected.timestamp + ",`back`='" + selected.back + "' WHERE `front`='" + selected.front + "'";
+      String command = "UPDATE " + db.getCardsTableName() + " SET `x`=" + x + ",`y`=" + y + ",`timestamp`=" + selected.timestamp + ",`back`='" + selected.back + "' WHERE `front`='" + selected.front + "'";
       db.execute(command);
     }
     drag = false;
